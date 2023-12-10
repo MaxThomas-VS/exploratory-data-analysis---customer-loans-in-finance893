@@ -11,7 +11,8 @@ def load_credentials(filename):
 def CloudRDS2csv(table_name='loan_payments'):
     db = RDSDatabaseConnector()
     table = db.CloudData2Table(table_name)
-    #table.to_csv("../")
+    table.to_csv( "../data/" + table_name )
+    return table
 
 class RDSDatabaseConnector():
     
@@ -31,5 +32,4 @@ class RDSDatabaseConnector():
 
 
 if __name__ == '__main__':
-    table = RDSDatabaseConnector().CloudData2Table()
-    print(table.columns)
+    CloudRDS2csv()
