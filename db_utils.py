@@ -13,9 +13,11 @@ class RDSDatabaseConnector():
         self.credentials = load_credentials(filename)
 
     def StartSQLAEngine(self):
-        url = sqla.engine.url.create(**db.credentials)
+        url = sqla.engine.url.URL.create(**self.credentials)
         return sqla.create_engine(url)
+    
+    #def 
 
 
 if __name__ == '__main__':
-    db = RDSDatabaseConnector()
+    db = RDSDatabaseConnector().StartSQLAEngine()
