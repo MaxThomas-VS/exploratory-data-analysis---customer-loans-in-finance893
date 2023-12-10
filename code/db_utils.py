@@ -3,10 +3,9 @@ import sqlalchemy as sqla
 import pandas as pd
 import sys
 
-# TODO: this is just a read yaml function. should rename accordingly to get rid of mention of credentials
-def load_credentials(filename):
+def read_yaml(filename):
     '''
-    Creates a python dictionary from a YAML file. Specifically, we need credentials to access RDS on AWS.
+    Creates a python dictionary from a YAML file. Here, we need credentials to access RDS on AWS.
 
     Parameters:
     ----------
@@ -15,12 +14,12 @@ def load_credentials(filename):
     
     Returns:
     --------
-    credentials: dict
-        credentials for accessing AWS RDS
+    yaml_as_dict: dict
+        yaml_as_dict for accessing AWS RDS
     '''
     with open(filename, 'r') as fn:
-        credentials = yaml.safe_load(fn)
-    return credentials
+        yaml_as_dict = yaml.safe_load(fn)
+    return yaml_as_dict
 
 def CloudRDS2csv(table_name):
     '''
@@ -67,7 +66,7 @@ class RDSDatabaseConnector():
         Connects with RDS and returns a given <table>.
     '''
     def __init__(self, filename="credentials.yaml"):
-        self.credentials = load_credentials(filename)
+        self.credentials = read_yaml(filename)
 
     def StartSQLAEngine(self):
         '''
