@@ -1,7 +1,7 @@
-import yaml
-import sqlalchemy as sqla
 import pandas as pd
+import sqlalchemy as sqla
 import sys
+import yaml
 
 def read_yaml(filename):
     '''
@@ -41,6 +41,9 @@ def CloudRDS2csv(table_name):
     return table
 
 def load_csv(table_name):
+    '''
+    Loads csv for given table to pandas dataframe.
+    '''
     return pd.read_csv('../data/' + table_name + '.csv')
 
 class RDSDatabaseConnector():
@@ -82,6 +85,32 @@ class RDSDatabaseConnector():
         engine = self.StartSQLAEngine().connect()
         return pd.read_sql_table(table, engine)
     
+class DataTransform():
+
+    def __init__(self, table_name):
+        self.df = load_csv(table_name)
+
+    def DropOnly1Value(self): # remove columns with only one value as they effectively contain no information
+        to_drop = []
+        for SeriesName, series in self.df.items():
+            if len(series.unique()) == 1:
+                to_drop.append(SeriesName)
+        self.df.drop(labels=to_drop, axis=1, inplace=True)
+        
+    def MakeCategorical(self, columns):
+        for column in columns:
+            self.df[column] = self.df[column].astype('category') 
+
+    def DropSpecificColumns(self, columns):
+        self.df.drop(labels=columns, axis=1, inplace=True)
+
+    def DropRowsWithNaN(self, columns):
+        self.df.dropna(axis=0, subset=columns, inplace=True)
+    
+    def InputeValues(self, method='mean'):
+        pass
+
+    
 
 
 
@@ -93,8 +122,14 @@ if __name__ == '__main__':
 
     CloudRDS2csv(table_name)
 
-    df = load_csv(table_name)
+    raw_data = DataTransform(table_name)
 
-    print(df.info())
-    print(df.head())
+    print(raw_data.df.info())
+    print(raw_data.df.head())
+
+    raw_data.DropOnly1Value()
+
+    categorical_columns = ['grade', 'sub_grade', 'employment_length', 'home_ownership','verification_status','loan_status','payment_plan','purpose']
+    raw_data.MakeCategorical(categorical_columns)
     
+    raw_data.df.info()
