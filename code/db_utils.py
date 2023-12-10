@@ -1,3 +1,4 @@
+from datetime import datetime
 import pandas as pd
 import sqlalchemy as sqla
 import sys
@@ -110,7 +111,15 @@ class DataTransform():
     def InputeValues(self, method='mean'):
         pass
 
-    
+    def CorrectEmploymentYears(self):
+        pass
+
+    def Dates2Datetimes(self, columns):
+        for column in columns:
+            self.df["column"] = pd.to_datetime(self.df["column"], format='%b-%Y')
+
+
+
 
 
 
@@ -129,7 +138,7 @@ if __name__ == '__main__':
 
     raw_data.DropOnly1Value()
 
-    categorical_columns = ['grade', 'sub_grade', 'employment_length', 'home_ownership','verification_status','loan_status','payment_plan','purpose']
+    categorical_columns = ['grade', 'sub_grade', 'employment_length', 'home_ownership','verification_status','loan_status','payment_plan','purpose','term']
     raw_data.MakeCategorical(categorical_columns)
     
     raw_data.df.info()
