@@ -94,4 +94,7 @@ if __name__ == '__main__':
     CloudRDS2csv(table_name)
 
     df = load_csv(table_name)
+
+    print(df.info())
+    print(df.head())
     
