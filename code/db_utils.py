@@ -8,6 +8,11 @@ def load_credentials(filename):
         credentials_dict = yaml.safe_load(fn)
     return credentials_dict
 
+def CloudRDS2csv(table_name='loan_payments'):
+    db = RDSDatabaseConnector()
+    table = db.CloudData2Table(table_name)
+    #table.to_csv("../")
+
 class RDSDatabaseConnector():
     
     def __init__(self, filename="credentials.yaml"):
@@ -20,6 +25,8 @@ class RDSDatabaseConnector():
     def CloudData2Table(self, table='loan_payments'):
         engine = self.StartSQLAEngine().connect()
         return pd.read_sql_table(table, engine)
+    
+
 
 
 
