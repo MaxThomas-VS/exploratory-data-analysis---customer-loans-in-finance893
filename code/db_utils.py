@@ -116,7 +116,33 @@ class DataTransform():
 
     def Dates2Datetimes(self, columns):
         for column in columns:
-            self.df["column"] = pd.to_datetime(self.df["column"], format='%b-%Y')
+            self.df[column] = pd.to_datetime(self.df[column], format='%b-%Y')
+
+    def CorrectTerm(self):
+        for ix, ixs in enumerate(self.df.term.str.split(' ')):
+            try:
+                self.df.term[ix] = ixs[0]
+            except:
+                self.df.term[ix] = ixs
+
+class DataFrameInfo():
+    
+    def __init__(self, df):
+        self.df = df
+
+    def GetColumnInfo(self, column):
+        description = self.df[column].describe()
+        info = self.df[column].info()
+        column_info = {'name': column,
+                       'dtype': str(self.df[column].dtype),
+                       'length': len(self.df[column]),
+                       'NaN_fraction': self.df[column].isna().sum() / len(self.df[column])}
+        if column_info['dtype'] == 'category':
+            column_info['unique'] = description['unique']
+            column_info['top'] = description['top']
+            column_info['top_fraction'] = column_info['top'] / column_info['length']
+        else:
+            pass
 
 
 
@@ -138,7 +164,10 @@ if __name__ == '__main__':
 
     raw_data.DropOnly1Value()
 
-    categorical_columns = ['grade', 'sub_grade', 'employment_length', 'home_ownership','verification_status','loan_status','payment_plan','purpose','term']
+    categorical_columns = ['grade', 'sub_grade', 'employment_length', 'home_ownership','verification_status','loan_status','payment_plan','purpose']
     raw_data.MakeCategorical(categorical_columns)
     
-    raw_data.df.info()
+    datenum_columns = ['issue_date', 'earliest_credit_line', 'last_payment_date', 'next_payment_date', 'last_credit_pull_date']
+    raw_data.Dates2Datetimes(datenum_columns)
+
+    raw_data.CorrectTerm()
