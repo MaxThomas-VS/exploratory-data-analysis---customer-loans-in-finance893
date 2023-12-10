@@ -1,6 +1,7 @@
 import yaml
 import sqlalchemy as sqla
 import pandas as pd
+import sys
 
 # TODO: this is just a read yaml function. should rename accordingly to get rid of mention of credentials
 def load_credentials(filename):
@@ -21,7 +22,7 @@ def load_credentials(filename):
         credentials = yaml.safe_load(fn)
     return credentials
 
-def CloudRDS2csv(table_name='loan_payments'):
+def CloudRDS2csv(table_name):
     '''
     Creates a pandas dataframe from a table in the RDS and saves to a csv in ../data/.
 
@@ -37,8 +38,11 @@ def CloudRDS2csv(table_name='loan_payments'):
     '''
     db = RDSDatabaseConnector()
     table = db.CloudData2Table(table_name)
-    table.to_csv( "../data/" + table_name )
+    table.to_csv( "../data/" + table_name + '.csv' )
     return table
+
+def load_csv(table_name):
+    return pd.read_csv('../data/' + table_name + '.csv')
 
 class RDSDatabaseConnector():
     '''
@@ -82,6 +86,13 @@ class RDSDatabaseConnector():
 
 
 
-
 if __name__ == '__main__':
-    CloudRDS2csv()
+    try:
+        table_name = sys.argv[1]
+    except:
+        table_name = 'loan_payments'
+
+    CloudRDS2csv(table_name)
+
+    df = load_csv(table_name)
+    
