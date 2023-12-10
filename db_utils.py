@@ -1,5 +1,6 @@
 import yaml
 import sqlalchemy as sqla
+import pandas as pd
 
 
 def load_credentials(filename):
@@ -16,8 +17,12 @@ class RDSDatabaseConnector():
         url = sqla.engine.url.URL.create(**self.credentials)
         return sqla.create_engine(url)
     
-    #def 
+    def CloudData2Table(self, table='loan_payments'):
+        engine = self.StartSQLAEngine().connect()
+        return pd.read_sql_table(table, engine)
+
 
 
 if __name__ == '__main__':
-    db = RDSDatabaseConnector().StartSQLAEngine()
+    table = RDSDatabaseConnector().CloudData2Table()
+    print(table.columns)
