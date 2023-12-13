@@ -165,6 +165,18 @@ class DataFrameInfo():
                   (column_info['50%'], column_info['25%'], column_info['75%']))
         print('---------------------')
 
+    def DescribeDataFrame(self, filename='initial_data_description.txt'):
+        print(self.df.info())
+        print('==============================')
+        print(self.df.describe())
+        print('==============================')
+        for col in self.df.columns:
+            self.PrintColumnInfo(col)
+
+
+
+
+
             
 
 
@@ -183,18 +195,18 @@ if __name__ == '__main__':
 
     raw_data = DataTransform(table_name)
 
-    print(raw_data.df.info())
-    print(raw_data.df.head())
 
     raw_data.DropOnly1Value()
 
-    categorical_columns = ['grade', 'sub_grade', 'employment_length', 'home_ownership','verification_status','loan_status','payment_plan','purpose']
+    categorical_columns = ['grade', 'sub_grade', 'employment_length', 'home_ownership','verification_status','loan_status','payment_plan','purpose','term']
     raw_data.MakeCategorical(categorical_columns)
     
     datenum_columns = ['issue_date', 'earliest_credit_line', 'last_payment_date', 'next_payment_date', 'last_credit_pull_date']
     raw_data.Dates2Datetimes(datenum_columns)
 
-    raw_data.CorrectTerm()
+    #raw_data.CorrectTerm()
+
+    print(raw_data.df['term'])
 
     loaded_data = DataFrameInfo(raw_data.df)
-    loaded_data.PrintColumnInfo('last_payment_date')
+    loaded_data.DescribeDataFrame()
