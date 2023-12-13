@@ -111,8 +111,9 @@ class DataTransform():
     def InputeValues(self, method='mean'):
         pass
 
-    def CorrectEmploymentYears(self):
-        pass
+    def CorrectEmploymentLength(self):
+        self.df.employment_length = self.df.employment_length.replace(' year', '')
+        self.df.employment_length = self.df.employment_length.replace(' years', '')
 
     def Dates2Datetimes(self, columns):
         for column in columns:
