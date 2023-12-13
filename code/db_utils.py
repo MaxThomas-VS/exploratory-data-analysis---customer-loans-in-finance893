@@ -105,12 +105,6 @@ class DataTransform():
     def DropSpecificColumns(self, columns):
         self.df.drop(labels=columns, axis=1, inplace=True)
 
-    def DropRowsWithNaN(self, columns):
-        self.df.dropna(axis=0, subset=columns, inplace=True)
-    
-    def InputeValues(self, method='mean'):
-        pass
-
     def CorrectEmploymentLength(self):
         self.df.employment_length = self.df.employment_length.replace(' year', '')
         self.df.employment_length = self.df.employment_length.replace(' years', '')
@@ -131,12 +125,15 @@ class DataFrameInfo():
     def __init__(self, df):
         self.df = df
 
+    def GetNaNFraction(self, column):
+        return self.df[column].isna().sum() / len(self.df[column])
+
     def GetColumnInfo(self, column):
         description = self.df[column].describe()
         column_info = {'name': column,
                        'dtype': str(self.df[column].dtype),
                        'length': len(self.df[column]),
-                       'NaN_pct': 100 * self.df[column].isna().sum() / len(self.df[column])}
+                       'NaN_pct': 100 * self.GetNaNFraction(column)}
         if column_info['dtype'] == 'category':
             column_info['unique'] = description['unique']
             column_info['top'] = description['top']
@@ -174,6 +171,24 @@ class DataFrameInfo():
         for col in self.df.columns:
             self.PrintColumnInfo(col)
 
+class DataFrameTransform():
+
+    def __init__(self, df):
+        self.df = df
+
+    def GetNaNFraction(self, column):
+        return self.df[column].isna().sum() / len(self.df[column])
+
+    def ImputeNaN(self, column, method='median'):
+        if method=='median':
+            impute_value = self.df[column].median()
+        elif method=='mean':
+            impute_value = self.df[column].mean()
+        self.df[column] = self.df[column].fillna(impute_value)
+
+    def DropRowsWithNaN(self, columns):
+        self.df.dropna(axis=0, subset=columns, inplace=True)
+
 
 
 
@@ -207,3 +222,4 @@ if __name__ == '__main__':
 
     loaded_data = DataFrameInfo(raw_data.df)
     loaded_data.DescribeDataFrame()
+
