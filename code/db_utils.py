@@ -133,17 +133,40 @@ class DataFrameInfo():
 
     def GetColumnInfo(self, column):
         description = self.df[column].describe()
-        info = self.df[column].info()
         column_info = {'name': column,
                        'dtype': str(self.df[column].dtype),
                        'length': len(self.df[column]),
-                       'NaN_fraction': self.df[column].isna().sum() / len(self.df[column])}
+                       'NaN_pct': 100 * self.df[column].isna().sum() / len(self.df[column])}
         if column_info['dtype'] == 'category':
             column_info['unique'] = description['unique']
             column_info['top'] = description['top']
-            column_info['top_fraction'] = column_info['top'] / column_info['length']
+            column_info['top_fraction'] = 100 * description['freq'] / column_info['length']
         else:
-            pass
+            column_info['mean'] = description['mean']
+            column_info['min']  = description['min']
+            column_info['max']  = description['max']
+            column_info['25%'] = description['25%']
+            column_info['50%'] = description['50%']
+            column_info['75%'] = description['75%']
+        return column_info
+    
+    def PrintColumnInfo(self, column):
+        column_info = self.GetColumnInfo(column)
+        print('---------------------')
+        print('%s is a %s with %s data, of which %s %% are NaN.' % 
+              (column_info['name'], column_info['dtype'], column_info['length'], column_info['NaN_pct']))
+        if column_info['dtype'] == 'category':
+            print('There are %s categories, of which %s is the most common at %s %% of the total.' %
+                  (column_info['unique'], column_info['top'], column_info['top_fraction']))
+        else:
+            print('The range of the data is %s to %s.' % (column_info['min'], column_info['max']))
+            print('The mean is %s.' % (column_info['mean']))
+            print('The median is %s, and the 25 and 75 %% centiles are %s and %s.' % 
+                  (column_info['50%'], column_info['25%'], column_info['75%']))
+        print('---------------------')
+
+            
+
 
 
 
@@ -172,3 +195,6 @@ if __name__ == '__main__':
     raw_data.Dates2Datetimes(datenum_columns)
 
     raw_data.CorrectTerm()
+
+    loaded_data = DataFrameInfo(raw_data.df)
+    loaded_data.PrintColumnInfo('last_payment_date')
