@@ -148,6 +148,7 @@ class DataFrameInfo():
             column_info['25%'] = description['25%']
             column_info['50%'] = description['50%']
             column_info['75%'] = description['75%']
+            column_info['std'] = self.df[column].std()
         return column_info
     
     def PrintColumnInfo(self, column):
@@ -160,7 +161,7 @@ class DataFrameInfo():
                   (column_info['unique'], column_info['top'], column_info['top_fraction']))
         else:
             print('The range of the data is %s to %s.' % (column_info['min'], column_info['max']))
-            print('The mean is %s.' % (column_info['mean']))
+            print('The mean is %s with a standard deviation of %s.' % (column_info['mean'], column_info['std']))
             print('The median is %s, and the 25 and 75 %% centiles are %s and %s.' % 
                   (column_info['50%'], column_info['25%'], column_info['75%']))
         print('---------------------')
@@ -203,10 +204,6 @@ if __name__ == '__main__':
     
     datenum_columns = ['issue_date', 'earliest_credit_line', 'last_payment_date', 'next_payment_date', 'last_credit_pull_date']
     raw_data.Dates2Datetimes(datenum_columns)
-
-    #raw_data.CorrectTerm()
-
-    print(raw_data.df['term'])
 
     loaded_data = DataFrameInfo(raw_data.df)
     loaded_data.DescribeDataFrame()
