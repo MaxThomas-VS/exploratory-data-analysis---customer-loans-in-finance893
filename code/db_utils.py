@@ -1,5 +1,6 @@
 # %% 
 from datetime import datetime
+import missingno as msno
 import pandas as pd
 import seaborn as sns
 import sqlalchemy as sqla
@@ -194,13 +195,15 @@ class DataFrameTransform():
             impute_value = self.df[column].median()
         elif method=='mean':
             impute_value = self.df[column].mean()
+        else:
+            impute_value = method
         self.df[column] = self.df[column].fillna(impute_value)
 
     def DropRowsWithNaN(self, columns):
         self.df.dropna(axis=0, subset=columns, inplace=True)
 
     def DropColsWithNaN(self, columns):
-        self.df.drop(columns=columns)
+        self.df.drop(columns=columns, inplace=True)
 
 class Plotter():
 
@@ -212,6 +215,11 @@ class Plotter():
 
     def PairPlot(self, columns):
         sns.pairplot(self.df[columns])
+
+    def InspectNaN(self):
+        msno.bar(self.df)
+        msno.matrix(self.df)
+        msno.heatmap(self.df)
 
 
 
