@@ -1,9 +1,12 @@
+# %% 
 from datetime import datetime
 import pandas as pd
+import seaborn as sns
 import sqlalchemy as sqla
 import sys
 import yaml
 
+#%%
 def read_yaml(filename):
     '''
     Creates a python dictionary from a YAML file. Here, we need credentials to access RDS on AWS.
@@ -122,11 +125,18 @@ class DataTransform():
 
 class DataFrameInfo():
     
-    def __init__(self, df):
-        self.df = df
+    def __init__(self, transformed_data):
+        self.df = transformed_data
 
     def GetNaNFraction(self, column):
         return self.df[column].isna().sum() / len(self.df[column])
+
+    def IsNumeric(self):
+        isnumeric = []
+        for column in self.df.columns:
+            if self.df[column].dtype.kind in 'biufc':
+                isnumeric.append(column)
+        return isnumeric
 
     def GetColumnInfo(self, column):
         description = self.df[column].describe()
@@ -189,12 +199,24 @@ class DataFrameTransform():
     def DropRowsWithNaN(self, columns):
         self.df.dropna(axis=0, subset=columns, inplace=True)
 
+    def DropColsWithNaN(self, columns):
+        self.df.drop(columns=columns)
+
+class Plotter():
+
+    def __init__(self, df):
+        self.df = df
+
+    def Histogram(self, column):
+        self.df[column].hist()
+
+    def PairPlot(self, columns):
+        sns.pairplot(self.df[columns])
 
 
 
 
             
-
 
 
 
@@ -209,17 +231,28 @@ if __name__ == '__main__':
 
     CloudRDS2csv(table_name)
 
-    raw_data = DataTransform(table_name)
+    transform = DataTransform(table_name)
+    df = transform.df
 
 
-    raw_data.DropOnly1Value()
+    transform.DropOnly1Value()
 
     categorical_columns = ['grade', 'sub_grade', 'employment_length', 'home_ownership','verification_status','loan_status','payment_plan','purpose','term']
-    raw_data.MakeCategorical(categorical_columns)
+    transform.MakeCategorical(categorical_columns)
     
     datenum_columns = ['issue_date', 'earliest_credit_line', 'last_payment_date', 'next_payment_date', 'last_credit_pull_date']
-    raw_data.Dates2Datetimes(datenum_columns)
+    transform.Dates2Datetimes(datenum_columns)
 
-    loaded_data = DataFrameInfo(raw_data.df)
-    loaded_data.DescribeDataFrame()
+    get_info = DataFrameInfo(df)
+    get_info.DescribeDataFrame()
 
+    transform_df = DataFrameTransform(df)
+    transform_df.ImputeNaN('collections_12_mths_ex_med', 'mean')
+
+# %% 
+    plotter = Plotter(df)
+    plotter.Histogram('loan_amount')
+    print(get_info.IsNumeric())
+
+
+# %%
