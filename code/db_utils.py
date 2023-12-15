@@ -1,13 +1,15 @@
-# %% 
 from datetime import datetime
+import numpy as np
+import matplotlib.pyplot as plt
 import missingno as msno
 import pandas as pd
+from scipy import stats
 import seaborn as sns
 import sqlalchemy as sqla
 import sys
 import yaml
 
-#%%
+
 def read_yaml(filename):
     '''
     Creates a python dictionary from a YAML file. Here, we need credentials to access RDS on AWS.
@@ -25,25 +27,6 @@ def read_yaml(filename):
     with open(filename, 'r') as fn:
         yaml_as_dict = yaml.safe_load(fn)
     return yaml_as_dict
-
-def CloudRDS2csv(table_name):
-    '''
-    Creates a pandas dataframe from a table in the RDS and saves to a csv in ../data/.
-
-    Parameters:
-    ----------
-    table_name: str
-        name of table to be accessed. The saved csv is at ../data/<table_name>.csv
-    
-    Returns:
-    --------
-    table: pandas.DataFrame
-        slected table as dataframe
-    '''
-    db = RDSDatabaseConnector()
-    table = db.CloudData2Table(table_name)
-    table.to_csv( "../data/" + table_name + '.csv' )
-    return table
 
 def load_csv(table_name):
     '''
@@ -73,7 +56,7 @@ class RDSDatabaseConnector():
     CloudData2Table(table)
         Connects with RDS and returns a given <table>.
     '''
-    def __init__(self, filename="credentials.yaml"):
+    def __init__(self, filename="../setup/credentials.yaml"):
         self.credentials = read_yaml(filename)
 
     def StartSQLAEngine(self):
@@ -90,60 +73,73 @@ class RDSDatabaseConnector():
         engine = self.StartSQLAEngine().connect()
         return pd.read_sql_table(table, engine)
     
-class DataTransform():
+    def CloudTable2csv(table_name):
+        '''
+        Creates a pandas dataframe from a table in the RDS and saves to a csv in ../data/.
 
-    def __init__(self, table_name):
-        self.df = load_csv(table_name)
+        Parameters:
+        ----------
+        table_name: str
+            name of table to be accessed. The saved csv is at ../data/<table_name>.csv
+        
+        Returns:
+        --------
+        table: pandas.DataFrame
+            slected table as dataframe
+        '''
+        db = RDSDatabaseConnector()
+        table = db.CloudData2Table(table_name)
+        table.to_csv( "../data/" + table_name + '-raw.csv' )
+        return table
+    
+class DataTransform():
 
     def DropOnly1Value(self): # remove columns with only one value as they effectively contain no information
         to_drop = []
-        for SeriesName, series in self.df.items():
+        for SeriesName, series in df.items():
             if len(series.unique()) == 1:
                 to_drop.append(SeriesName)
-        self.df.drop(labels=to_drop, axis=1, inplace=True)
+        df.drop(labels=to_drop, axis=1, inplace=True)
         
     def MakeCategorical(self, columns):
         for column in columns:
-            self.df[column] = self.df[column].astype('category') 
+            df[column] = df[column].astype('category') 
 
     def DropSpecificColumns(self, columns):
-        self.df.drop(labels=columns, axis=1, inplace=True)
+        df.drop(labels=columns, axis=1, inplace=True)
 
     def CorrectEmploymentLength(self):
-        self.df.employment_length = self.df.employment_length.replace(' year', '')
-        self.df.employment_length = self.df.employment_length.replace(' years', '')
+        df.employment_length = df.employment_length.replace(' year', '')
+        df.employment_length = df.employment_length.replace(' years', '')
 
     def Dates2Datetimes(self, columns):
         for column in columns:
-            self.df[column] = pd.to_datetime(self.df[column], format='%b-%Y')
+            df[column] = pd.to_datetime(df[column], format='%b-%Y')
 
     def CorrectTerm(self):
-        for ix, ixs in enumerate(self.df.term.str.split(' ')):
+        for ix, ixs in enumerate(df.term.str.split(' ')):
             try:
-                self.df.term[ix] = ixs[0]
+                df.term[ix] = ixs[0]
             except:
-                self.df.term[ix] = ixs
+                df.term[ix] = ixs
 
 class DataFrameInfo():
-    
-    def __init__(self, transformed_data):
-        self.df = transformed_data
 
     def GetNaNFraction(self, column):
-        return self.df[column].isna().sum() / len(self.df[column])
+        return df[column].isna().sum() / len(df[column])
 
     def IsNumeric(self):
         isnumeric = []
-        for column in self.df.columns:
-            if self.df[column].dtype.kind in 'biufc':
+        for column in df.columns:
+            if df[column].dtype.kind in 'biufc':
                 isnumeric.append(column)
         return isnumeric
 
     def GetColumnInfo(self, column):
-        description = self.df[column].describe()
+        description = df[column].describe()
         column_info = {'name': column,
-                       'dtype': str(self.df[column].dtype),
-                       'length': len(self.df[column]),
+                       'dtype': str(df[column].dtype),
+                       'length': len(df[column]),
                        'NaN_pct': 100 * self.GetNaNFraction(column)}
         if column_info['dtype'] == 'category':
             column_info['unique'] = description['unique']
@@ -156,7 +152,7 @@ class DataFrameInfo():
             column_info['25%'] = description['25%']
             column_info['50%'] = description['50%']
             column_info['75%'] = description['75%']
-            column_info['std'] = self.df[column].std()
+            column_info['std'] = df[column].std()
         return column_info
     
     def PrintColumnInfo(self, column):
@@ -175,92 +171,68 @@ class DataFrameInfo():
         print('---------------------')
 
     def DescribeDataFrame(self, filename='initial_data_description.txt'):
-        print(self.df.info())
+        print(df.info())
         print('==============================')
-        print(self.df.describe())
+        print(df.describe())
         print('==============================')
-        for col in self.df.columns:
+        for col in df.columns:
             self.PrintColumnInfo(col)
 
 class DataFrameTransform():
 
-    def __init__(self, df):
-        self.df = df
-
     def GetNaNFraction(self, column):
-        return self.df[column].isna().sum() / len(self.df[column])
+        return df[column].isna().sum() / len(df[column])
 
     def ImputeNaN(self, column, method='median'):
         if method=='median':
-            impute_value = self.df[column].median()
+            impute_value = df[column].median()
         elif method=='mean':
-            impute_value = self.df[column].mean()
+            impute_value = df[column].mean()
         else:
             impute_value = method
-        self.df[column] = self.df[column].fillna(impute_value)
+        df[column] = df[column].fillna(impute_value)
 
     def DropRowsWithNaN(self, columns):
-        self.df.dropna(axis=0, subset=columns, inplace=True)
+        df.dropna(axis=0, subset=columns, inplace=True)
 
     def DropColsWithNaN(self, columns):
-        self.df.drop(columns=columns, inplace=True)
+        df.drop(columns=columns, inplace=True)
+
+    def RemoveOutliers(self, column):
+        pass
 
 class Plotter():
 
     def __init__(self, df):
-        self.df = df
+        df = df
 
-    def Histogram(self, column):
-        self.df[column].hist()
+    def Histogram(self, column, transform=False):
+        data = df[column].copy()
+        if transform == 'log':
+            data = data.map(lambda i: np.log(i) if i > 0 else 0)
+        elif transform == 'boxcox':
+            data = stats.boxcox(data)
+            data = pd.Series(data[0])
+        elif transform == 'yeojohnson':
+            data = stats.yeojohnson(data)
+            data = pd.Series(data[0])          
+        t = sns.histplot(data, label="Skewness: %.2f"%(data.skew()), kde=True )
+        t.legend()
 
     def PairPlot(self, columns):
-        sns.pairplot(self.df[columns])
+        sns.pairplot(df[columns])
+
+    def CorrelationHeatmap(self, columns):
+        corr = df[columns].corr()
+        mask = np.zeros_like(corr, dtype=np.bool_)
+        mask[np.triu_indices_from(mask)] = True
+        sns.heatmap(corr, square=True, linewidths=.5, annot=False, cmap='seismic', mask=mask)
+        plt.yticks(rotation=0)
+        plt.title('Correlation Matrix of all Numerical Variables')
 
     def InspectNaN(self):
-        msno.bar(self.df)
-        msno.matrix(self.df)
-        msno.heatmap(self.df)
+        msno.bar(df)
+        msno.matrix(df)
+        msno.heatmap(df)
 
-
-
-
-            
-
-
-
-
-
-
-if __name__ == '__main__':
-    try:
-        table_name = sys.argv[1]
-    except:
-        table_name = 'loan_payments'
-
-    CloudRDS2csv(table_name)
-
-    transform = DataTransform(table_name)
-    df = transform.df
-
-
-    transform.DropOnly1Value()
-
-    categorical_columns = ['grade', 'sub_grade', 'employment_length', 'home_ownership','verification_status','loan_status','payment_plan','purpose','term']
-    transform.MakeCategorical(categorical_columns)
     
-    datenum_columns = ['issue_date', 'earliest_credit_line', 'last_payment_date', 'next_payment_date', 'last_credit_pull_date']
-    transform.Dates2Datetimes(datenum_columns)
-
-    get_info = DataFrameInfo(df)
-    get_info.DescribeDataFrame()
-
-    transform_df = DataFrameTransform(df)
-    transform_df.ImputeNaN('collections_12_mths_ex_med', 'mean')
-
-# %% 
-    plotter = Plotter(df)
-    plotter.Histogram('loan_amount')
-    print(get_info.IsNumeric())
-
-
-# %%
