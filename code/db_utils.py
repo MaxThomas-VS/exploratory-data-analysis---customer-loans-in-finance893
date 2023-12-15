@@ -5,6 +5,8 @@ import missingno as msno
 import pandas as pd
 from scipy import stats
 import seaborn as sns
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
 import sqlalchemy as sqla
 import sys
 import yaml
@@ -94,29 +96,29 @@ class RDSDatabaseConnector():
     
 class DataTransform():
 
-    def DropOnly1Value(self): # remove columns with only one value as they effectively contain no information
+    def DropOnly1Value(self, df): # remove columns with only one value as they effectively contain no information
         to_drop = []
         for SeriesName, series in df.items():
             if len(series.unique()) == 1:
                 to_drop.append(SeriesName)
         df.drop(labels=to_drop, axis=1, inplace=True)
         
-    def MakeCategorical(self, columns):
+    def MakeCategorical(self, df, columns):
         for column in columns:
             df[column] = df[column].astype('category') 
 
-    def DropSpecificColumns(self, columns):
+    def DropSpecificColumns(self, df, columns):
         df.drop(labels=columns, axis=1, inplace=True)
 
-    def CorrectEmploymentLength(self):
+    def CorrectEmploymentLength(self, df):
         df.employment_length = df.employment_length.replace(' year', '')
         df.employment_length = df.employment_length.replace(' years', '')
 
-    def Dates2Datetimes(self, columns):
+    def Dates2Datetimes(self, df, columns):
         for column in columns:
             df[column] = pd.to_datetime(df[column], format='%b-%Y')
 
-    def CorrectTerm(self):
+    def CorrectTerm(self, df):
         for ix, ixs in enumerate(df.term.str.split(' ')):
             try:
                 df.term[ix] = ixs[0]
@@ -125,22 +127,33 @@ class DataTransform():
 
 class DataFrameInfo():
 
-    def GetNaNFraction(self, column):
+    def GetNaNFraction(self, df, column):
         return df[column].isna().sum() / len(df[column])
+    
+    def PrintNaNFractions(self, df):
+        some_nan = False
+        for col in df.columns:
+            nan_frac = self.GetNaNFraction(df, col)
+            if nan_frac > 0:
+                some_nan = True
+                print('%s has %s %% NaN.' % (col, 100*nan_frac) )
+        if not some_nan:
+            print('No NaN in dataset.')
+        
 
-    def IsNumeric(self):
+    def IsNumeric(self, df):
         isnumeric = []
         for column in df.columns:
             if df[column].dtype.kind in 'biufc':
                 isnumeric.append(column)
         return isnumeric
 
-    def GetColumnInfo(self, column):
+    def GetColumnInfo(self, df, column):
         description = df[column].describe()
         column_info = {'name': column,
                        'dtype': str(df[column].dtype),
                        'length': len(df[column]),
-                       'NaN_pct': 100 * self.GetNaNFraction(column)}
+                       'NaN_pct': 100 * self.GetNaNFraction(df, column)}
         if column_info['dtype'] == 'category':
             column_info['unique'] = description['unique']
             column_info['top'] = description['top']
@@ -155,8 +168,8 @@ class DataFrameInfo():
             column_info['std'] = df[column].std()
         return column_info
     
-    def PrintColumnInfo(self, column):
-        column_info = self.GetColumnInfo(column)
+    def PrintColumnInfo(self, df, column):
+        column_info = self.GetColumnInfo(df, column)
         print('---------------------')
         print('%s is a %s with %s data, of which %s %% are NaN.' % 
               (column_info['name'], column_info['dtype'], column_info['length'], column_info['NaN_pct']))
@@ -170,43 +183,72 @@ class DataFrameInfo():
                   (column_info['50%'], column_info['25%'], column_info['75%']))
         print('---------------------')
 
-    def DescribeDataFrame(self, filename='initial_data_description.txt'):
+    def DescribeDataFrame(self, df, filename='initial_data_description.txt'):
         print(df.info())
         print('==============================')
         print(df.describe())
         print('==============================')
         for col in df.columns:
-            self.PrintColumnInfo(col)
+            self.PrintColumnInfo(df, col)
 
 class DataFrameTransform():
 
-    def GetNaNFraction(self, column):
+    def GetNaNFraction(self, df, column):
         return df[column].isna().sum() / len(df[column])
 
-    def ImputeNaN(self, column, method='median'):
+    def ImputeNaN(self, df, column, method='median'):
         if method=='median':
             impute_value = df[column].median()
         elif method=='mean':
             impute_value = df[column].mean()
         else:
-            impute_value = method
+            if df[column].dtype == 'category':
+                df[column] = df[column].cat.add_categories(method)
+                impute_value = method
+            else:
+                impute_value = method
+
         df[column] = df[column].fillna(impute_value)
 
-    def DropRowsWithNaN(self, columns):
+
+    def DefineMLR2Impute(self, df, column, predictors):
+        df_predictors = df[predictors]
+        df_response = df[column]
+        build_mask = df_response.notna()
+        Xs = df_predictors.loc[build_mask]
+        Ys = df_response.loc[build_mask]
+
+        X_train, X_test, Y_train, Y_test = train_test_split(Xs, Ys, test_size = 0.2, random_state = 100)
+
+        mlr = LinearRegression().fit(X_train, Y_train)
+        predicted = mlr.predict(X_test)
+
+        plt.figure()
+        plt.scatter(np.array(Y_test), np.array(predicted), s=0.1)
+        plt.title('MLR performance for ' + column)
+
+        return mlr, build_mask
+    
+    def ImputeNaNMLR(self, df, column, predictors, mlr=None):
+        if mlr is None:
+            mlr, mask = self.DefineMLR2Impute(df, column, predictors)
+        else:
+            mlr, mask = mlr[0], mlr[1]
+        df[column].loc[~mask] = mlr.predict(df[predictors].loc[~mask])
+
+                    
+    def DropRowsWithNaN(self, df, columns):
         df.dropna(axis=0, subset=columns, inplace=True)
 
-    def DropColsWithNaN(self, columns):
+    def DropColsWithNaN(self, df, columns):
         df.drop(columns=columns, inplace=True)
 
-    def RemoveOutliers(self, column):
+    def RemoveOutliers(self, df, column):
         pass
 
 class Plotter():
 
-    def __init__(self, df):
-        df = df
-
-    def Histogram(self, column, transform=False):
+    def Histogram(self, df, column, transform=False):
         data = df[column].copy()
         if transform == 'log':
             data = data.map(lambda i: np.log(i) if i > 0 else 0)
@@ -219,10 +261,10 @@ class Plotter():
         t = sns.histplot(data, label="Skewness: %.2f"%(data.skew()), kde=True )
         t.legend()
 
-    def PairPlot(self, columns):
+    def PairPlot(self, df, columns):
         sns.pairplot(df[columns])
 
-    def CorrelationHeatmap(self, columns):
+    def CorrelationHeatmap(self, df, columns):
         corr = df[columns].corr()
         mask = np.zeros_like(corr, dtype=np.bool_)
         mask[np.triu_indices_from(mask)] = True
@@ -230,9 +272,13 @@ class Plotter():
         plt.yticks(rotation=0)
         plt.title('Correlation Matrix of all Numerical Variables')
 
-    def InspectNaN(self):
-        msno.bar(df)
-        msno.matrix(df)
-        msno.heatmap(df)
+    def InspectNaN(self, df, plots=['bar', 'matrix', 'heatmap']):
+        if 'bar' in plots:
+            msno.bar(df)
+        if 'matrix' in plots:
+            msno.matrix(df)
+        if 'heatmap' in plots:
+            msno.heatmap(df)
+
 
     
