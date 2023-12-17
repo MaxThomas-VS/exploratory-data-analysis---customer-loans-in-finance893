@@ -1,0 +1,16 @@
+#!/bin/bash
+eval "$(conda shell.bash hook)"
+conda activate aicore_eda
+
+echo "Getting data."
+python save_raw_data.py loan_payments
+echo "Raw data saved to /data/loan_payments-raw.csv."
+
+echo "Cleaning data."
+jupytext --to notebook define_dataframe.py 
+jupyter nbconvert --to html --execute define_dataframe.ipynb
+mv define_dataframe.html ../results/
+mv define_dataframe.ipynb ../results/
+echo "Clean data saved to /data/loan_payments-clean.csv."
+echo "Notes on cleaning are in /results/define_dataframe.ipynb."
+
