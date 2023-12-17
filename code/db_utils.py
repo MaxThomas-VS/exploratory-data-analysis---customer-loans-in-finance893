@@ -246,9 +246,27 @@ class DataFrameTransform():
     def RemoveOutliers(self, df, column):
         pass
 
+    def TransformColumn(self, df, col, transform='log'):
+        var_to_trans = df[col].copy()
+        if transform == 'log':
+            trans_var = var_to_trans.map(lambda ii: np.log(ii) if ii > 0 else 0)
+        elif transform == 'boxcox':
+            try:
+                trans_var = pd.Series(stats.boxcox(var_to_trans)[0]).rename(col, inplace=True)
+            except ValueError:
+                print('Box-Cox fails for %s as some data are negative.' % (col))
+                print('Returning original data.')
+                trans_var = var_to_trans
+        elif transform == 'yeojohnson':
+            trans_var = pd.Series(stats.yeojohnson(var_to_trans)[0]).rename(col, inplace=True)
+        elif transform == 'No transform':
+            trans_var = var_to_trans
+        return trans_var
+    
+
 class Plotter():
 
-    def Histogram(self, df, column, transform=False):
+    def Histogram(self, df, column, transform=False, ax=False):
         data = df[column].copy()
         if transform == 'log':
             data = data.map(lambda i: np.log(i) if i > 0 else 0)
@@ -257,9 +275,28 @@ class Plotter():
             data = pd.Series(data[0])
         elif transform == 'yeojohnson':
             data = stats.yeojohnson(data)
-            data = pd.Series(data[0])          
-        t = sns.histplot(data, label="Skewness: %.2f"%(data.skew()), kde=True )
-        t.legend()
+            data = pd.Series(data[0])      
+        if not ax:    
+            t = sns.histplot(data, label="Skewness: %.2f"%(data.skew()), kde=True )
+            t.legend()
+        else:
+            sns.histplot(data, label="Skewness: %.2f"%(data.skew()), kde=True, ax=ax)
+            ax.legend()
+
+    def TransformTest(self, df, col):
+
+        fig, axes = plt.subplots(1,4, figsize=(10, 7))
+        transformers = ['No transform', 'log', 'boxcox', 'yeojohnson']
+        tc = DataFrameTransform()
+        pl = Plotter()
+        for itrns, trns in enumerate(transformers):
+            var2test = tc.TransformColumn(df=df, col=col, transform=trns).to_frame()
+            pl.Histogram(var2test, col, ax=axes[itrns])
+            axes[itrns].title.set_text(trns)
+            #sns.histplot(var2test[col], ax=axes[icol])
+
+        fig.tight_layout()
+        
 
     def PairPlot(self, df, columns):
         sns.pairplot(df[columns])
@@ -268,9 +305,10 @@ class Plotter():
         corr = df[columns].corr()
         mask = np.zeros_like(corr, dtype=np.bool_)
         mask[np.triu_indices_from(mask)] = True
-        sns.heatmap(corr, square=True, linewidths=.5, annot=False, cmap='seismic', mask=mask)
+        plt.figure(figsize=(15,15))
+        sns.heatmap(corr, square=True, linewidths=.5, annot=True, cmap='seismic', vmin=-1, vmax=1, mask=mask)
         plt.yticks(rotation=0)
-        plt.title('Correlation Matrix of all Numerical Variables')
+        plt.title('Correlation Matrix')
 
     def InspectNaN(self, df, plots=['bar', 'matrix', 'heatmap']):
         if 'bar' in plots:
@@ -279,6 +317,19 @@ class Plotter():
             msno.matrix(df)
         if 'heatmap' in plots:
             msno.heatmap(df)
+
+    def CheckOutlierRemoval(self, df, df_test, columns):
+        to_check_outliers = columns
+        for col in to_check_outliers:
+            fig, axes = plt.subplots(2,1, figsize=(5,10))
+            self.Histogram(df, col, ax=axes[0])
+            self.Histogram(df_test, col, ax=axes[0])
+            boxplot_data = {'Raw': df[col], 'Outliers removed': df_test[col]}
+            axes[1].boxplot(boxplot_data.values(),
+                        flierprops={'marker': 'x', 'markersize': 1, 'markerfacecolor': 'r'})
+            axes[1].set_xticklabels(boxplot_data.keys())
+            axes[1].set_ylabel(col)
+            print('==================================')
 
 
     
