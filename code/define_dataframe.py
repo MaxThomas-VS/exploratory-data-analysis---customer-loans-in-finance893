@@ -99,10 +99,10 @@ mlr_mask = data_frame_transform.DefineMLR2Impute(df, 'funded_amount', predictors
 data_frame_transform.ImputeNaNMLR(df, 'funded_amount', predictors, mlr_mask)
 # -
 
-# term has two values, 36 months or 60 months. 
+# term has two values, 36 months or 60 months. It is an important variable for later analysis.
 # They have similar frequencies so imputing with the most common is risky.
-# We therefore replace NaN with a new category, Uknown.
-data_frame_transform.ImputeNaN(df, 'term', 'Unknown')
+# We therefore iteratively imputate term using a random forest method.
+data_frame_transform.ImputeTerm(df)
 
 # Now we've dealt with all the NaN, so we reindex to clean up.
 df_info.PrintNaNFractions(df)
@@ -171,3 +171,4 @@ plotter.CorrelationHeatmap(df, to_check_outliers)
 
 # Finally, we save the dataframe to a csv for loading in the analysis step.
 df.to_csv('../data/loan_payments-clean.csv')
+df.to_pickle('../data/loan_payments-clean.pkl')

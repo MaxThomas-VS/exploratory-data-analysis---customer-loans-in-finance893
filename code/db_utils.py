@@ -10,6 +10,12 @@ from sklearn.model_selection import train_test_split
 import sqlalchemy as sqla
 import sys
 import yaml
+from sklearn.experimental import enable_iterative_imputer
+from sklearn.impute import IterativeImputer
+from sklearn.ensemble import RandomForestRegressor
+from sklearn import preprocessing
+
+
 
 
 def read_yaml(filename):
@@ -118,12 +124,7 @@ class DataTransform():
         for column in columns:
             df[column] = pd.to_datetime(df[column], format='%b-%Y')
 
-    def CorrectTerm(self, df):
-        for ix, ixs in enumerate(df.term.str.split(' ')):
-            try:
-                df.term[ix] = ixs[0]
-            except:
-                df.term[ix] = ixs
+
 
 class DataFrameInfo():
 
@@ -262,6 +263,31 @@ class DataFrameTransform():
         elif transform == 'No transform':
             trans_var = var_to_trans
         return trans_var
+
+    def ImputeTerm(self, df):
+        le = preprocessing.LabelEncoder()
+        impute_col = 'term'
+        impute_col_encoded = 'term_encoded'
+
+        le.fit(df.loc[:, impute_col])
+
+        df[impute_col_encoded] = le.transform(df[impute_col])
+        df[impute_col_encoded] = df[impute_col_encoded].map(lambda x: np.nan if x == 2 else x)
+
+        imputer = IterativeImputer(random_state=1)
+        df_train = df[['loan_amount','instalment','int_rate',impute_col_encoded]]
+        imputer.fit(df_train)
+
+        df_imputed = imputer.transform(df_train)
+        new_term = df_imputed[:,-1].round().astype(int)
+        #new_term = new_term.map(lambda x: 0 if x < 0.5 else 1 )
+
+        df[impute_col_encoded] = new_term
+        df[impute_col_encoded] = df[impute_col_encoded].map(lambda x: 0 if x < 0.5 else 1 )
+
+        term_imputed = list(le.inverse_transform(df[impute_col_encoded]))
+
+        df[impute_col] = term_imputed
     
 
 class Plotter():
