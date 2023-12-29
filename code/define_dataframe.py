@@ -37,6 +37,7 @@ df.info()
 print(df['Unnamed: 0'].head(5))
 df.drop(columns='Unnamed: 0', inplace=True)
 
+# %%
 # From prior knowledge of the dataset, we expect columns to be a mixture of categorical, numerical, and dates.
 # We use the data_transform class to correct the dytpes.
 # +
@@ -111,7 +112,7 @@ data_frame_transform.ImputeNaNMLR(df, 'funded_amount', predictors, mlr_mask)
 # We therefore iteratively imputate term using a random forest method.
 data_frame_transform.ImputeTerm(df)
 df['term_numeric'] = [36 if ix == '36 months' else 60 for ix in df['term']]
-
+data_transform.MakeCategorical(df,['term'])
 #%%
 # Now we've dealt with all the NaN, so we reindex to clean up.
 df_info.PrintNaNFractions(df)
@@ -182,3 +183,5 @@ plotter.CorrelationHeatmap(df, to_check_outliers)
 print(df.info())
 df.to_csv('../data/loan_payments-clean.csv')
 df.to_pickle('../data/loan_payments-clean.pkl')
+
+# %%

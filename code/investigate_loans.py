@@ -120,9 +120,9 @@ plt.bar(x=insights.keys(), height=insights.values())
 #df_co['term_numeric'] = [36 if ix == '36 months' else 60 for ix in df_co['term']]
 #potential_value = df_co['loan_amount'] * (1+df_co['int_rate']/100) ** (df_co['term_numeric']/12)
 
-co_potential_lost = co_value - co_recovered
-co_post_recovery = df.loc[df['loan_status']=='Charged Off']['recoveries'].sum()
-co_lost = co_loaned - (co_recovered + co_post_recovery)
+#co_potential_lost = co_value - co_recovered
+#co_post_recovery = df.loc[df['loan_status']=='Charged Off']['recoveries'].sum()
+#co_lost = co_loaned - (co_recovered + co_post_recovery)
 
 plt.bar(x=loss_breakdown['Charged Off'].keys(),
         height=loss_breakdown['Charged Off'].values())
@@ -165,8 +165,9 @@ print('This is %s %% of the total.' % (100 * loss_breakdown['Late->Charged Off']
 
 # %%
 # for given value in column, check percentage of charged off
+data_frame_info = dbu.DataFrameInfo()
+iscat = data_frame_info.IsCategorical(df)
 
-iscat = dbu.DataFrameInfo.IsCategorical(df)
 cat_pct = {}
 for cv in iscat:
     cat_pct[cv] = pct_status_series(df, cv, 'Charged Off')
