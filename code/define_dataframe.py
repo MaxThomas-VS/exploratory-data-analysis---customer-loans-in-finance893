@@ -1,3 +1,4 @@
+#%%
 # ---
 # jupyter:
 #   jupytext:
@@ -61,6 +62,11 @@ data_frame_transform.DropRowsWithNaN(df, ['last_payment_date',
                                           'last_credit_pull_date',
                                           'collections_12_mths_ex_med'])
 
+#%%
+ix = df[(df['home_ownership']=='NONE') | (df['home_ownership']=='OTHER')].index
+df.drop(ix, inplace=True)
+df['home_ownership'] = df['home_ownership'].cat.remove_unused_categories()    
+
 df_info.PrintNaNFractions(df)
 # -
 
@@ -99,11 +105,14 @@ mlr_mask = data_frame_transform.DefineMLR2Impute(df, 'funded_amount', predictors
 data_frame_transform.ImputeNaNMLR(df, 'funded_amount', predictors, mlr_mask)
 # -
 
+# %%
 # term has two values, 36 months or 60 months. It is an important variable for later analysis.
 # They have similar frequencies so imputing with the most common is risky.
 # We therefore iteratively imputate term using a random forest method.
 data_frame_transform.ImputeTerm(df)
+df['term_numeric'] = [36 if ix == '36 months' else 60 for ix in df['term']]
 
+#%%
 # Now we've dealt with all the NaN, so we reindex to clean up.
 df_info.PrintNaNFractions(df)
 df.reset_index(inplace=True)
@@ -170,5 +179,6 @@ plotter.CorrelationHeatmap(df, to_check_outliers)
 # Rather than dropping variables now, we will use this figure as a reference during the analysis step.
 
 # Finally, we save the dataframe to a csv for loading in the analysis step.
+print(df.info())
 df.to_csv('../data/loan_payments-clean.csv')
 df.to_pickle('../data/loan_payments-clean.pkl')

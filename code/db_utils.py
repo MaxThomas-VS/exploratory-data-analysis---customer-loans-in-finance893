@@ -148,6 +148,13 @@ class DataFrameInfo():
             if df[column].dtype.kind in 'biufc':
                 isnumeric.append(column)
         return isnumeric
+    
+    def IsCategorical(self, df):
+        iscat = []
+        for column in df.columns:
+            if df[column].dtype.kind == 'O':
+                iscat.append(column)
+        return iscat
 
     def GetColumnInfo(self, df, column):
         description = df[column].describe()
@@ -288,6 +295,22 @@ class DataFrameTransform():
         term_imputed = list(le.inverse_transform(df[impute_col_encoded]))
 
         df[impute_col] = term_imputed
+
+    def SimpleLoanStatus(self, df):
+        main_cat = ['Fully Paid', 'Current', 'Charged Off', 'Default']
+        df['loan_status-simple'] = df['loan_status']
+        df['loan_status-simple'] = df['loan_status-simple'].cat.add_categories('Late')
+        for ix in range(len(df)):
+            if df['loan_status'].iloc[ix] in main_cat:
+                df['loan_status-simple'].iloc[ix] = df['loan_status'].iloc[ix]
+            elif 'Fully paid' in df['loan_status'].iloc[ix]:
+                df['loan_status-simple'].iloc[ix] = 'Fully Paid'
+            elif 'Charged Off' in df['loan_status'].iloc[ix]:
+                df['loan_status-simple'].iloc[ix] = 'Charged Off'
+            else:
+                df['loan_status-simple'].iloc[ix] = 'Late'
+        df['loan_status-simple'] = df['loan_status-simple'].cat.remove_unused_categories()    
+
     
 
 class Plotter():
