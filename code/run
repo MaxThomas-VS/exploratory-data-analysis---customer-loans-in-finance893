@@ -2,6 +2,9 @@
 eval "$(conda shell.bash hook)"
 conda activate aicore_eda
 
+mkdir -p ../results
+mkdir -p ../data
+
 echo "Getting data."
 python save_raw_data.py loan_payments
 echo "Raw data saved to /data/loan_payments-raw.csv."
