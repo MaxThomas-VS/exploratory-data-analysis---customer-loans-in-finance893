@@ -5,7 +5,7 @@ Here, an exploratory data analysis is performed for a large portfolio of loan da
 cd code
 source run
 ``` 
-which will produce ```/results```. The main results of the analysis are described in ```/results/define_dataframe.html``` and ```/results/investigate_loans.html```.
+which will produce ```/results```. The main results of the analysis are described in [define_dataframe.ipynb](/results/define_dataframe.ipynb) and [investigate_loans.ipynb](/results/investigate_loans.ipynb).
 
 Within ```/code```:
 - *run* sets up the directories and environment, runs all the code, and tidies the results.
