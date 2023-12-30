@@ -180,6 +180,7 @@ plotter.CorrelationHeatmap(df, to_check_outliers)
 # Rather than dropping variables now, we will use this figure as a reference during the analysis step.
 
 # Finally, we save the dataframe to a csv for loading in the analysis step.
+data_transform.DropOnly1Value(df)
 print(df.info())
 df.to_csv('../data/loan_payments-clean.csv')
 df.to_pickle('../data/loan_payments-clean.pkl')
