@@ -5,23 +5,24 @@ conda activate aicore_eda
 mkdir -p ../results
 mkdir -p ../data
 
+
 echo "Getting data."
 python save_raw_data.py loan_payments
 echo "Raw data saved to /data/loan_payments-raw.csv."
 
 echo "================================="
 echo "Cleaning data."
-jupytext --to notebook define_dataframe.py 
+jupytext --to notebook --execute define_dataframe.py 
 jupyter nbconvert --to html --execute define_dataframe.ipynb
-mv define_dataframe.html ../results/
 mv define_dataframe.ipynb ../results/
+mv define_dataframe.html ../results/
 echo "Clean data saved to /data/loan_payments-clean.csv."
 echo "Notes on cleaning are in /results/define_dataframe.ipynb."
 
 echo "================================="
 echo "Investigating loan data."
-jupytext --to notebook investigate_loans.py 
+jupytext --to notebook --execute investigate_loans.py 
 jupyter nbconvert --to html --execute investigate_loans.ipynb
-mv investigate_loans.html ../results/
 mv investigate_loans.ipynb ../results/
+mv investigate_loans.html ../results/
 echo "Report for investigation of loan data saved to /reults/investigate_loans.html."
