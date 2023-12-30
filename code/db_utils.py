@@ -297,7 +297,7 @@ class DataFrameTransform():
         df[impute_col] = term_imputed
 
     def SimpleLoanStatus(self, df):
-        main_cat = ['Fully Paid', 'Current', 'Charged Off', 'Default']
+        main_cat = ['Fully Paid', 'Current', 'Charged Off']
         df['loan_status-simple'] = df['loan_status']
         df['loan_status-simple'] = df['loan_status-simple'].cat.add_categories('Late')
         for ix in range(len(df)):
